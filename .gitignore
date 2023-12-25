@@ -3,3 +3,4 @@
 /venv/
 /credentials/
 maindebug.py
+/__pycache__/
