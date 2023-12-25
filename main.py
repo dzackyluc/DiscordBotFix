@@ -5,7 +5,7 @@ import logging
 from app import alwayson
 from discord.ext import commands, tasks
 
-DISCORD_TOKEN = os.environ("DISCORD_TOKEN")
+DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 
 client = commands.Bot(command_prefix="/", intents=discord.Intents.all())
 discord.utils.setup_logging(level=logging.INFO)
@@ -22,7 +22,7 @@ async def load():
 async def main():
     async with client:
         await load()
-        await alwayson()
         await client.start(str(DISCORD_TOKEN))
 
+alwayson()
 asyncio.run(main())
