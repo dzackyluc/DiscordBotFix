@@ -31,12 +31,33 @@ class music(commands.Cog):
 
     @commands.Cog.listener()
     async def on_wavelink_track_start(self, payload:wavelink.TrackEventPayload):
-        player: wavelink.Player | None = payload.player
+        reason = payload.reason
         try:
             self.queue.pop(0)
         except:
             pass
-    
+        logging.info(reason)
+
+    @commands.Cog.listener()
+    async def on_wavelink_track_end(self, payload:wavelink.TrackEventPayload):
+        player: wavelink.Player | None = payload.player
+        reason= payload.reason
+        if str(reason) == "FINISHED":
+            if not len(self.queue) == 0:
+                next_track: wavelink.tracks = self.queue[0]
+                channel = self.client.get_channel(self.playingTextChannel)
+
+                try:
+                    await player.play(next_track)
+                except:
+                    return await self.commands.Context.send(embed=discord.Embed(title=f"Something went wrong while playing **{next_track.title}**", color=discord.Color.from_rgb(255, 255, 255)))
+                
+                await self.commands.Context.send(embed=discord.Embed(title=f"Now playing: {next_track.title}", color=discord.Color.from_rgb(255, 255, 255)))
+            else:
+                pass
+        else:
+            logging.info(reason)
+
     @commands.command(name="join", aliases=["connect", "summon"])
     async def join_command(self, ctx: commands.Context, channel: typing.Optional[discord.VoiceChannel]):
         if channel is None:
@@ -61,6 +82,7 @@ class music(commands.Cog):
         if player is None:
             return await ctx.send("bot is not connected to any voice channel")
         
+        await player.stop()
         await player.disconnect()
         mbed = discord.Embed(title="Disconnected", color=discord.Color.from_rgb(255, 255, 255))
         await ctx.send(embed=mbed)
@@ -186,8 +208,9 @@ class music(commands.Cog):
         
         if search is None:
             if not len(self.queue) == 0:
+                np = wavelink.tracks.Playable | None
                 mbed = discord.Embed(
-                    title=f"Now playing: {player.track}" if player.is_playing else "Queue: ",
+                    title=f"Now playing: {np}" if player.is_playing else "Queue: ",
                     description = "\n".join(f"**{i+1}. {track}**" for i, track in enumerate(self.queue[:10])) if not player.is_playing else "**Queue: **\n"+"\n".join(f"**{i+1}. {track}**" for i, track in enumerate(self.queue[:10])),
                     color=discord.Color.from_rgb(255, 255, 255)
                 )
@@ -207,7 +230,7 @@ class music(commands.Cog):
             else:
                 vc: wavelink.Player = ctx.voice_client
             
-            if not vc.isp_playing():
+            if not vc.is_playing():
                 try:
                     await vc.play(track)
                 except:
