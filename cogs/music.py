@@ -27,7 +27,7 @@ class music(commands.Cog):
 
     @commands.Cog.listener()
     async def on_wavelink_node_ready(self, node: wavelink.Node):
-        logging.info(f"Node <{node.id}> is now Ready!")
+        logging.info(f"Node <{node.id}> is now Ready! | Resumed: <{node.status}>")
 
     @commands.Cog.listener()
     async def on_wavelink_track_start(self, payload:wavelink.TrackEventPayload):
@@ -68,7 +68,7 @@ class music(commands.Cog):
     @commands.command(name="play")
     async def play_command(self, ctx: commands.Context, *, search: str):
         try:
-            search = await wavelink.YouTubeTrack.search(search)
+            search = await wavelink.YouTubeMusicTrack.search(search)
         except:
             return await ctx.reply(embed=discord.Embed(title="Something went wrong while searching for this track", color=discord.Color.from_rgb(255, 255, 255)))
 
@@ -197,7 +197,7 @@ class music(commands.Cog):
                 return await ctx.reply(embed=discord.Embed(title="The queue is empty", color=discord.Color.from_rgb(255, 255, 255)))
         else:
             try:
-                track = await wavelink.YouTubeTrack.search(search)
+                track = await wavelink.YouTubeMusicTrack.search(search)
             except:
                 return await ctx.reply(embed=discord.Embed(title="Something went wrong while searching for this track", color=discord.Color.from_rgb(255, 255, 255)))
             
