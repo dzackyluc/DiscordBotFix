@@ -13,6 +13,7 @@ discord.utils.setup_logging(level=logging.INFO)
 @client.event
 async def on_ready():
     logging.info(f"Logged in: {client.user} | {client.user.id}")
+    await client.tree.sync()
 
 async def load():
     for filename in os.listdir("./cogs"):

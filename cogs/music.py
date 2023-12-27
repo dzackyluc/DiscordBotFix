@@ -1,7 +1,7 @@
 import discord
 import wavelink
 import logging
-import asyncio
+import datetime
 import typing
 from typing import cast
 from discord.ext import commands, tasks
@@ -27,7 +27,7 @@ class music(commands.Cog):
 
     @commands.Cog.listener()
     async def on_wavelink_node_ready(self, node: wavelink.Node):
-        logging.info(f"Node <{node.id}> is now Ready! | Resumed: <{node.status}>")
+        logging.info(f"Node <{node.id}> is now Ready! | Status: <{node.status}>")
 
     @commands.Cog.listener()
     async def on_wavelink_track_start(self, payload:wavelink.TrackEventPayload):
@@ -50,195 +50,252 @@ class music(commands.Cog):
                 try:
                     await player.play(next_track)
                 except:
-                    return await self.commands.Context.send(embed=discord.Embed(title=f"Something went wrong while playing **{next_track.title}**", color=discord.Color.from_rgb(255, 255, 255)))
+                    return await player.channel.send(embed=discord.Embed(title=f"Something went wrong while playing **{next_track.title}**", color=discord.Color.from_rgb(255, 255, 255)))
                 
-                await self.commands.Context.send(embed=discord.Embed(title=f"Now playing: {next_track.title}", color=discord.Color.from_rgb(255, 255, 255)))
+                await player.channel.send(embed=discord.Embed(title=f"Now playing: {next_track.title}", color=discord.Color.from_rgb(255, 255, 255)))
             else:
                 pass
         else:
             logging.info(reason)
 
-    @commands.command(name="join", aliases=["connect", "summon"])
-    async def join_command(self, ctx: commands.Context, channel: typing.Optional[discord.VoiceChannel]):
+    @commands.hybrid_command(name="join", aliases=["connect", "summon"])
+    async def join_command(self, interaction: discord.Interaction, channel: typing.Optional[discord.VoiceChannel]):
+        await interaction.interaction.response.defer()
         if channel is None:
-            channel = ctx.author.voice.channel
+            try:
+                channel = interaction.author.voice.channel
+            except:
+                return await interaction.interaction.followup.send("You must connected to voice channel before use this command")
         
+        channel = interaction.author.voice.channel
         node = wavelink.NodePool.get_node()
-        player = node.get_player(ctx.guild.id)
+        player = node.get_player(interaction.guild.id)
 
         if player is not None:
             if player.is_connected():
-                return await ctx.send("bot is already connected to a voice channel")
+                return await interaction.interaction.followup.send("bot is already connected to a voice channel")
         
         await channel.connect(cls=wavelink.Player)
-        mbed=discord.Embed(title=f"Connected to {channel.name}", color=discord.Color.from_rgb(255, 255, 255))
-        await ctx.send(embed=mbed)
+        mbed=discord.Embed(title=f"Connected to {channel.name}", color=discord.Color.from_rgb(255, 255, 255), timestamp=datetime.datetime.now())
+        mbed.set_author(name=interaction.message.author, icon_url=interaction.message.author.avatar)
+        mbed.set_footer(text=self.client.user.name, icon_url=self.client.user.avatar)
+        await interaction.interaction.followup.send(embed=mbed)
 
-    @commands.command(name="leave", alises=["disconnect"])
-    async def leave_command(self, ctx: commands.Context):
+    @commands.hybrid_command(name="leave", alises=["disconnect"])
+    async def leave_command(self, interaction: discord.Interaction):
+        await interaction.interaction.response.defer()
         node = wavelink.NodePool.get_node()
-        player = node.get_player(ctx.guild.id)
+        player = node.get_player(interaction.guild.id)
 
         if player is None:
-            return await ctx.send("bot is not connected to any voice channel")
+            return await interaction.interaction.followup.send("bot is not connected to any voice channel")
         
         await player.stop()
         await player.disconnect()
-        mbed = discord.Embed(title="Disconnected", color=discord.Color.from_rgb(255, 255, 255))
-        await ctx.send(embed=mbed)
+        mbed = discord.Embed(title="Disconnected", color=discord.Color.from_rgb(255, 255, 255), timestamp=datetime.datetime.now())
+        mbed.set_author(name=interaction.message.author, icon_url=interaction.message.author.avatar)
+        mbed.set_footer(text=self.client.user.name, icon_url=self.client.user.avatar)
+        await interaction.interaction.followup.send(embed=mbed)
     
-    @commands.command(name="play")
-    async def play_command(self, ctx: commands.Context, *, search: str):
+    @commands.hybrid_command(name="play")
+    async def play_command(self, interaction: discord.Interaction, search: str):
+        await interaction.interaction.response.defer()
         try:
             search = await wavelink.YouTubeMusicTrack.search(search)
         except:
-            return await ctx.reply(embed=discord.Embed(title="Something went wrong while searching for this track", color=discord.Color.from_rgb(255, 255, 255)))
+            mbed = discord.Embed(title="Something went wrong while searching for this track", color=discord.Color.from_rgb(255, 255, 255), timestamp=datetime.datetime.now())
+            mbed.set_author(name=interaction.message.author, icon_url=interaction.message.author.avatar)
+            mbed.set_footer(text=self.client.user.name, icon_url=self.client.user.avatar)
+            return await interaction.interaction.followup.send(embed=mbed)
 
         track = search[0]
 
         node = wavelink.NodePool.get_node()
-        player = node.get_player(ctx.guild.id)
+        player = node.get_player(interaction.guild.id)
 
-        if not ctx.voice_client:
-            vc: wavelink.Player = await ctx.author.voice.channel.connect(cls=wavelink.Player)
+        if not interaction.voice_client:
+            mbed = discord.Embed(title="Bot is not connected to any voice channnel", color=discord.Color.from_rgb(255, 255, 255), timestamp= datetime.datetime.now())
+            mbed.set_author(name=interaction.message.author, icon_url=interaction.message.author.avatar)
+            mbed.set_footer(text=self.client.user.name, icon_url=self.client.user.avatar)
+            return await interaction.interaction.followup.send(embed=mbed)
         else:
-            vc: wavelink.Player = ctx.voice_client
+            vc: wavelink.Player = interaction.voice_client
         
         if not vc.is_playing():
             try:
                 await player.play(track)
             except:
-                return await ctx.reply(embed=discord.Embed(title="Something went wrong while playing this tracks", color=discord.Color.from_rgb(255, 255, 255)))
+                mbed = discord.Embed(title="Something went wrong while playing this tracks", color=discord.Color.from_rgb(255, 255, 255), timestamp= datetime.datetime.now())
+                mbed.set_author(name=interaction.message.author, icon_url=interaction.message.author.avatar)
+                mbed.set_footer(text=self.client.user.name, icon_url=self.client.user.avatar)
+                return await interaction.interaction.followup.send(embed=mbed)
         else:
             self.queue.append(track)
 
-        mbed = discord.Embed(title=f"Added {track} To the queue", color=discord.Color.from_rgb(255, 255, 255))
-        await ctx.send(embed=mbed)
+        mbed = discord.Embed(title=f"Added {track} To the queue", color=discord.Color.from_rgb(255, 255, 255), timestamp= datetime.datetime.now())
+        mbed.set_author(name=interaction.message.author, icon_url=interaction.message.author.avatar)
+        mbed.set_footer(text=self.client.user.name, icon_url=self.client.user.avatar)
+        await interaction.interaction.followup.send(embed=mbed)
     
-    @commands.command(name="stop")
-    async def stop_command(self, ctx: commands.Context):
+    @commands.hybrid_command(name="stop")
+    async def stop_command(self, interaction: discord.Interaction):
+        await interaction.interaction.response.defer()
         node = wavelink.NodePool.get_node()
-        player = node.get_player(ctx.guild.id)
+        player = node.get_player(interaction.guild.id)
 
         if player is None:
-            return await ctx.send("Bot is not connected to any voice channel")
+            return await interaction.interaction.followup.send("Bot is not connected to any voice channel")
 
         self.queue.clear()
         
         if player.is_playing():
             await player.stop()
-            mbed = discord.Embed(title="Playback Stoped", color=discord.Color.from_rgb(255, 255, 255))
-            return await ctx.send(embed=mbed)
+            mbed = discord.Embed(title="Playback Stoped", color=discord.Color.from_rgb(255, 255, 255), timestamp= datetime.datetime.now())
+            mbed.set_author(name=interaction.message.author, icon_url=interaction.message.author.avatar)
+            mbed.set_footer(text=self.client.user.name, icon_url=self.client.user.avatar)
+            return await interaction.interaction.followup.send(embed=mbed)
         else:
-            return await ctx.send("Nothing Is playing right now")
+            return await interaction.interaction.followup.send("Nothing Is playing right now")
     
-    @commands.command(name="pause")
-    async def pause_command(self, ctx: commands.Context):
+    @commands.hybrid_command(name="pause")
+    async def pause_command(self, interaction: discord.Interaction):
+        await interaction.interaction.response.defer()
         node = wavelink.NodePool.get_node()
-        player = node.get_player(ctx.guild.id)
+        player = node.get_player(interaction.guild.id)
 
         if player is None:
-            return await ctx.send("Bot is not connected to any voice channel")
+            return await interaction.interaction.followup.send("Bot is not connected to any voice channel")
         
         if not player.is_paused():
             if player.is_playing():
                 await player.pause()
-                mbed = discord.Embed(title="Playback Paused", color=discord.Color.from_rgb(255, 255, 255))
-                return await ctx.send(embed=mbed)
+                mbed = discord.Embed(title="Playback Paused", color=discord.Color.from_rgb(255, 255, 255), timestamp= datetime.datetime.now())
+                mbed.set_author(name=interaction.message.author, icon_url=interaction.message.author.avatar)
+                mbed.set_footer(text=self.client.user.name, icon_url=self.client.user.avatar)
+                return await interaction.interaction.followup.send(embed=mbed)
             else:
-                return await ctx.send("Nothing is playing right now")
+                return await interaction.interaction.followup.send("Nothing is playing right now")
         else:
-            return await ctx.send("Playback is Already paused")
+            return await interaction.interaction.followup.send("Playback is Already paused")
     
-    @commands.command(name="resume")
-    async def resume_command(self, ctx: commands.Context):
+    @commands.hybrid_command(name="resume")
+    async def resume_command(self, interaction: discord.Interaction):
+        await interaction.interaction.response.defer()
         node = wavelink.NodePool.get_node()
-        player = node.get_player(ctx.guild.id)
+        player = node.get_player(interaction.guild.id)
 
         if player is None:
-            return await ctx.send("bot is not connnected to any voice channel")
+            return await interaction.interaction.followup.send("bot is not connnected to any voice channel")
         
         if player.is_paused():
             await player.resume()
-            mbed = discord.Embed(title="Playback resumed", color=discord.Color.from_rgb(255, 255, 255))
-            return await ctx.send(embed=mbed)
+            mbed = discord.Embed(title="Playback resumed", color=discord.Color.from_rgb(255, 255, 255), timestamp= datetime.datetime.now())
+            mbed.set_author(name=interaction.message.author, icon_url=interaction.message.author.avatar)
+            mbed.set_footer(text=self.client.user.name, icon_url=self.client.user.avatar)
+            return await interaction.interaction.followup.send(embed=mbed)
         else:
             if not len(self.queue) == 0:
                 track: wavelink.tracks = self.queue[0]
                 player.play(track)
-                return await ctx.reply(embed=discord.Embed(title=f"Now playing: {track.title}"))
+                mbed = discord.Embed(title=f"Now playing: {track.title}", color=discord.Color.from_rgb(255, 255, 255), timestamp= datetime.datetime.now())
+                mbed.set_author(name=interaction.message.author, icon_url=interaction.message.author.avatar)
+                mbed.set_footer(text=self.client.user.name, icon_url=self.client.user.avatar)
+                return await interaction.interaction.followup.send(embed=mbed)
             else:
-                return await ctx.send("playback is not paused")
+                return await interaction.interaction.followup.send("playback is not paused")
 
-    @commands.command(name="volume")
-    async def volume_command(self, ctx: commands.Context, to: int):
+    @commands.hybrid_command(name="volume")
+    async def volume_command(self, interaction: discord.Interaction, to: int):
+        await interaction.interaction.response.defer()
         if to > 100:
-            return await ctx.send("Volume should be between 0 and 100")
+            return await interaction.interaction.followup.send("Volume should be between 0 and 100")
         elif to < 1:
-            return await ctx.send("Volume should be between 0 and 100")
+            return await interaction.interaction.followup.send("Volume should be between 0 and 100")
 
         node = wavelink.NodePool.get_node()
-        player = node.get_player(ctx.guild.id)
+        player = node.get_player(interaction.guild.id)
 
         await player.set_volume(to)
-        mbed = discord.Embed(title=f"Changed Volume to {to}", color=discord.Color.from_rgb(255, 255, 255))
-        await ctx.send(embed=mbed)
+        mbed = discord.Embed(title=f"Changed Volume to {to}", color=discord.Color.from_rgb(255, 255, 255), timestamp= datetime.datetime.now())
+        mbed.set_author(name=interaction.message.author, icon_url=interaction.message.author.avatar)
+        mbed.set_footer(text=self.client.user.name, icon_url=self.client.user.avatar)
+        await interaction.interaction.followup.send(embed=mbed)
 
-    @commands.command(name="skip")
-    async def skip_command(self, ctx: commands.Context):
+    @commands.hybrid_command(name="skip")
+    async def skip_command(self, interaction: discord.Interaction):
+        await interaction.interaction.response.defer()
         node = wavelink.NodePool.get_node()
-        player = node.get_player(ctx.guild.id)
+        player = node.get_player(interaction.guild.id)
 
         if not len(self.queue) == 0:
             next_track: wavelink.tracks = self.queue[0]
             try:
                 await player.play(next_track)
             except:
-                return await ctx.reply(embed=discord.Embed(title="Something went wrong while playing this track", color=discord.Color.from_rgb(255, 255, 255)))
-
-            await ctx.reply(embed=discord.Embed(title=f"Now playing {next_track.title}", color=discord.Color.from_rgb(255, 255, 255)))
+                mbed = discord.Embed(title="Something went wrong while playing this track", color=discord.Color.from_rgb(255, 255, 255), timestamp=datetime.datetime.now())
+                mbed.set_author(name=interaction.message.author, icon_url=interaction.message.author.avatar)
+                mbed.set_footer(text=self.client.user.name, icon_url=self.client.user.avatar)
+                return await interaction.interaction.followup.send(embed=mbed)
+            
+            mbed = discord.Embed(title=f"Now playing {next_track.title}", color=discord.Color.from_rgb(255, 255, 255), timestamp=datetime.datetime.now())
+            mbed.set_author(name=interaction.message.author, icon_url=interaction.message.author.avatar)
+            mbed.set_footer(text=self.client.user.name, icon_url=self.client.user.avatar)
+            await interaction.interaction.followup.send(embed=mbed)
         else:
-            await ctx.reply("The queue is empty")
+            await interaction.interaction.followup.send("The queue is empty")
 
-    #this command would queue a song if some args(search) is provided else it would just show the queue
-    @commands.command(name="queue")
-    async def queue_command(self, ctx: commands.Context, *, search=None):
+    @commands.hybrid_command(name="queue")
+    async def queue_command(self, interaction: discord.Interaction, search=None):
+        await interaction.interaction.response.defer()
         node = wavelink.NodePool.get_node()
-        player = node.get_player(ctx.guild.id)
+        player = node.get_player(interaction.guild.id)
         
         if search is None:
             if not len(self.queue) == 0:
-                np = wavelink.tracks.Playable | None
                 mbed = discord.Embed(
-                    title=f"Now playing: {np}" if player.is_playing else "Queue: ",
+                    title=f"Now playing: {player.current}" if player.is_playing else "Queue: ",
                     description = "\n".join(f"**{i+1}. {track}**" for i, track in enumerate(self.queue[:10])) if not player.is_playing else "**Queue: **\n"+"\n".join(f"**{i+1}. {track}**" for i, track in enumerate(self.queue[:10])),
-                    color=discord.Color.from_rgb(255, 255, 255)
+                    color=discord.Color.from_rgb(255, 255, 255),
+                    timestamp= datetime.datetime.now()
                 )
-
-                return await ctx.reply(embed=mbed)
+                mbed.set_author(name=interaction.message.author, icon_url=interaction.message.author.avatar)
+                mbed.set_footer(text=self.client.user.name, icon_url=self.client.user.avatar)
+                return await interaction.interaction.followup.send(embed=mbed)
             else:
-                return await ctx.reply(embed=discord.Embed(title="The queue is empty", color=discord.Color.from_rgb(255, 255, 255)))
+                discord.Embed(title="The queue is empty", color=discord.Color.from_rgb(255, 255, 255), timestamp= datetime.datetime.now())
+                mbed.set_author(name=interaction.message.author, icon_url=interaction.message.author.avatar)
+                mbed.set_footer(text=self.client.user.name, icon_url=self.client.user.avatar)
+                return await interaction.interaction.followup.send(embed=mbed)
         else:
             try:
                 track = await wavelink.YouTubeMusicTrack.search(search)
             except:
-                return await ctx.reply(embed=discord.Embed(title="Something went wrong while searching for this track", color=discord.Color.from_rgb(255, 255, 255)))
+                mbed =  discord.Embed(title="Something went wrong while searching for this track", color=discord.Color.from_rgb(255, 255, 255), timestamp= datetime.datetime.now())
+                mbed.set_author(name=interaction.message.author, icon_url=interaction.message.author.avatar)
+                mbed.set_footer(text=self.client.user.name, icon_url=self.client.user.avatar)
+                return await interaction.interaction.followup.send(embed=mbed)
             
-            if not ctx.voice_client:
-                vc: wavelink.Player = await ctx.author.voice.channel(cls=wavelink.Player)
-                await player.connect(ctx.author.voice.channel)
+            if not interaction.voice_client:
+                vc: wavelink.Player = await interaction.author.voice.channel(cls=wavelink.Player)
+                await player.connect(interaction.author.voice.channel)
             else:
-                vc: wavelink.Player = ctx.voice_client
+                vc: wavelink.Player = interaction.voice_client
             
             if not vc.is_playing():
                 try:
                     await vc.play(track)
                 except:
-                    return await ctx.reply(embed=discord.Embed(title="Something went wrong while playing this track", color=discord.Color.from_rgb(255, 255, 255)))
+                    mbed = discord.Embed(title="Something went wrong while playing this track", color=discord.Color.from_rgb(255, 255, 255), timestamp= datetime.datetime.now())
+                    mbed.set_author(name=interaction.message.author, icon_url=interaction.message.author.avatar)
+                    mbed.set_footer(text=self.client.user.name, icon_url=self.client.user.avatar)
+                    return await interaction.interaction.followup.send(embed=mbed)
             else:
                 self.queue.append(track)
             
-            await ctx.reply(embed=discord.Embed(title=f"Added {track.title} to the queue", color=discord.Color.from_rgb(255, 255, 255)))
+            mbed = discord.Embed(title=f"Added {track.title} to the queue", color=discord.Color.from_rgb(255, 255, 255), timestamp= datetime.datetime.now())
+            mbed.set_author(name=interaction.message.author, icon_url=interaction.message.author.avatar)
+            mbed.set_footer(text=self.client.user.name, icon_url=self.client.user.avatar)
+            await interaction.interaction.followup.send(embed=mbed)
 
 async def setup(client):
     await client.add_cog(music(client))

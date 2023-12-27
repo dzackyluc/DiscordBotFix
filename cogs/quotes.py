@@ -2,6 +2,7 @@ import discord
 import logging
 import requests
 import datetime
+import asyncio
 from discord.ext import commands
 
 def quotesani():
@@ -43,23 +44,28 @@ class quotes(commands.Cog):
     async def on_ready(self):
         logging.info("/quotes is online!")
 
-    @commands.command()
-    async def quotes(self, ctx):
+    @commands.hybrid_command(name="quotes", description="Get quotes from anime character")
+    async def quotes(self, interaction: discord.Interaction):
+        await interaction.interaction.response.defer()
         data = quotesani()
         resultquote = data['result'][0]['indo']
         character = data['result'][0]['character']
 
         gambar = imageani(character)
-        resultlink = gambar['search_results'][0]['character_image']
+        if gambar == -1:
+            pass
+        else:
+            resultlink = gambar['search_results'][0]['character_image']
 
         embed = discord.Embed(title=character,
                       description=f"> {resultquote}",
                       colour=0x41f500,
                       timestamp=datetime.datetime.now())
 
-        embed.set_author(name=ctx.message.author,
-                 icon_url=ctx.message.author.avatar)
-        if resultlink == 1:
+        embed.set_author(name=interaction.message.author,
+                 icon_url=interaction.message.author.avatar)
+        
+        if gambar == -1:
             pass
         else:
             embed.set_image(url=f"{resultlink}")
@@ -67,9 +73,7 @@ class quotes(commands.Cog):
         embed.set_footer(text=self.client.user.name,
                  icon_url=self.client.user.avatar)
 
-        await ctx.send(embed=embed)
-
-
+        await interaction.interaction.followup.send(embed=embed)
 
 async def setup(client):
     await client.add_cog(quotes(client))

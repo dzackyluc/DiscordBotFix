@@ -10,9 +10,9 @@ class twitter(commands.Cog):
     async def on_ready(self):
         logging.info("/twitsend is online!")
 
-    @commands.command()
-    async def twitsend(self, ctx, messages):
-        await ctx.send("testing twit send!")
+    @commands.hybrid_command(name="twitsend", description="Make post in twitter")
+    async def twitsend(self, interaction: discord.Interaction):
+        await interaction.send("testing twit send!")
 
 async def setup(client):
     await client.add_cog(twitter(client))

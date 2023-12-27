@@ -10,10 +10,11 @@ class ping(commands.Cog):
     async def on_ready(self):
         logging.info("/ping is online!")
 
-    @commands.command()
-    async def ping(self, ctx):
+    @commands.hybrid_command(name="ping", description="Ping the bot")
+    async def ping(self, interaction: discord.Interaction):
+        await interaction.interaction.response.defer(ephemeral=True)
         botlatency = round(self.client.latency * 1000)
-        await ctx.send(f"connected {botlatency} ms!")
+        await interaction.interaction.followup.send(f"connected {botlatency} ms!")
 
 async def setup(client):
     await client.add_cog(ping(client))

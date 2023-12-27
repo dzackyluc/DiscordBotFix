@@ -11,23 +11,19 @@ class purge(commands.Cog):
     async def on_ready(self):
         logging.info("/purge is online!")
 
-    @commands.command()
+    @commands.hybrid_command(name="purge", description="Delete chat with given value(Admin Only)")
     @commands.has_permissions(administrator=True)
-    async def purge(self, ctx, amount = 0):
+    async def purge(self, interaction: discord.Interaction, amount = 0):
+        await interaction.interaction.response.defer(ephemeral=True)
         if amount == 0:
-            fail = await ctx.send ("Please enter an amount to delete!")
-            await asyncio.sleep (6)
-            await fail.delete()
+            await interaction.interaction.followup.send("Please enter an amount to delete!")
 
         elif amount > 0 or amount < 100:
-            await ctx.channel.purge(limit=amount)
-            sucess = await ctx.send (f"{amount} messages has been deleted <a:Verified:878231325469974599>") #sending success msg
-            await asyncio.sleep (6) #wait 6 seconds
-            await sucess.delete() #deleting the sucess msg
+            await interaction.channel.purge(limit=amount)
+            await asyncio.sleep(2)
+            await interaction.interaction.followup.send(f"{amount} messages has been deleted")
         else:
-            fail = await ctx.send ("Cannot purge more than 99")
-            await asyncio.sleep (6)
-            await fail.delete()
+            await interaction.interaction.followup.send("Cannot delete more than 99")
 
 async def setup(client):
     await client.add_cog(purge(client))
