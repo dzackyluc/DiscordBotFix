@@ -262,7 +262,7 @@ class music(commands.Cog):
                 mbed.set_footer(text=self.client.user.name, icon_url=self.client.user.avatar)
                 return await interaction.interaction.followup.send(embed=mbed)
             else:
-                discord.Embed(title="The queue is empty", color=discord.Color.from_rgb(255, 255, 255), timestamp= datetime.datetime.now())
+                mbed = discord.Embed(title="The queue is empty", color=discord.Color.from_rgb(255, 255, 255), timestamp= datetime.datetime.now())
                 mbed.set_author(name=interaction.message.author, icon_url=interaction.message.author.avatar)
                 mbed.set_footer(text=self.client.user.name, icon_url=self.client.user.avatar)
                 return await interaction.interaction.followup.send(embed=mbed)
