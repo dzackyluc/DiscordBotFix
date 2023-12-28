@@ -35,6 +35,7 @@ class quran(commands.Cog):
                 deskripsi = hasil['data']['deskripsi']
                 replacements = str(deskripsi).replace("<i>", "_").replace("</i>", "_")
                 ayats = hasil['data']['ayat']
+                audio = hasil['data']['audioFull']['01']
                 mbed = discord.Embed(title=f"{namalatin}",
                       description=f"{replacements}",
                       colour=0x00b0f4,
@@ -46,6 +47,9 @@ class quran(commands.Cog):
                     mbed.add_field(name=f"{teks_arab}",
                                    value=f"{teks_latin}",
                                    inline=False)
+                mbed.add_field(name="Link Audio Baca",
+                               value=f"> {audio}",
+                               inline=False)
                 mbed.set_footer(text=self.client.user.name, icon_url=self.client.user.avatar)
                 await interaction.interaction.followup.send(embed=mbed)
             else:
