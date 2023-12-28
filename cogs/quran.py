@@ -26,7 +26,7 @@ class quran(commands.Cog):
         logging.info("/quotes is online!")
 
     @commands.hybrid_command(name="quran", description="Dapatkan ayat al-quran berdasarkan surat")
-    async def quran(self, interaction: discord.Interaction, nomor):
+    async def quran(self, interaction: discord.Interaction, nomor: int):
         await interaction.interaction.response.defer()
         try:
             if nomor >= 1 or nomor <= 114:
