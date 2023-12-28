@@ -29,7 +29,7 @@ class quran(commands.Cog):
     async def quran(self, interaction: discord.Interaction, nomor):
         await interaction.interaction.response.defer()
         try:
-            if hasil >= 1 or hasil <= 114:
+            if nomor >= 1 or nomor <= 114:
                 hasil = alquran(nomor)
                 namalatin = hasil['data']['namaLatin']
                 deskripsi = hasil['data']['deskripsi']
